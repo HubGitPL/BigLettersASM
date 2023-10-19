@@ -1,0 +1,109 @@
+; wczytywanie i wyświetlanie tekstu wielkimi literami
+; (inne znaki się nie zmieniają)
+.686
+.model flat
+extern _ExitProcess@4 : PROC
+extern _MessageBoxW@16 : PROC
+extern __write : PROC ; (dwa znaki podkreślenia)
+extern __read : PROC ; (dwa znaki podkreślenia)
+public _main
+.data
+tytul		dw 't', 'w', 'o', 'j', ' ', 't', 'e', 'k', 's', 't', 0
+tekst_pocz  db 10, 'Prosz', 169, ' napisa', 134, ' jaki', 152, ' tekst '
+			db 'i nacisn', 165, 134, ' Enter', 10
+koniec_t    db ?
+magazyn     db 80 dup (?)
+wyswietlenie dw 80 dup (?)
+nowa_linia  db 10
+liczba_znakow dd ?
+.code
+_main PROC
+; wyświetlenie tekstu informacyjnego
+; liczba znaków tekstu
+			 mov ecx,(OFFSET koniec_t) - (OFFSET tekst_pocz)
+			 push ecx
+			 push OFFSET tekst_pocz ; adres tekstu
+			 push 1 ; nr urządzenia (tu: ekran - nr 1)
+			 call __write ; wyświetlenie tekstu początkowego
+			 add esp, 12 ; usuniecie parametrów ze stosu
+; czytanie wiersza z klawiatury
+			 push 80 ; maksymalna liczba znaków
+			 push OFFSET magazyn
+			 push 0 ; nr urządzenia (tu: klawiatura - nr 0)
+			 call __read ; czytanie znaków z klawiatury
+			 add esp, 12 ; usuniecie parametrów ze stosu
+; kody ASCII napisanego tekstu zostały wprowadzone
+; do obszaru 'magazyn'
+; funkcja read wpisuje do rejestru EAX liczbę
+; wprowadzonych znaków
+			 mov liczba_znakow, eax
+; rejestr ECX pełni rolę licznika obiegów pętli
+			 mov ecx, eax
+			 mov ebx, 0 ; indeks początkowy
+petla:		 XOR dx, dx
+			 mov dl, magazyn[ebx] ; pobranie kolejnego znaku
+			 cmp dl, 165 ;ą
+			 jne skok1
+			 mov dx, 0104H
+			 jmp dalej
+		skok1:
+			 cmp dx, 134 ;ć
+			 jne skok2;
+			 mov dx, 0106H;
+			 jmp dalej;
+		skok2:
+			 cmp dx, 169 ;ę
+			 jne skok3;
+			 mov dx, 0118H;
+			 jmp dalej;
+		skok3:
+			 cmp dx, 136 ;ł
+			 jne skok4;
+			 mov dx, 0141H;
+			 jmp dalej;
+		skok4:
+			 cmp dx, 228 ;ń
+			 jne skok5;
+			 mov dx, 0143H;
+			 jmp dalej;
+		skok5:
+			 cmp dx, 162;ó
+			 jne skok6;
+			 mov dx, 0D3H;
+			 jmp dalej;
+		skok6:
+			 cmp dx, 152 ;ś
+			 jne skok7;
+			 mov dx, 015AH;
+			 jmp dalej;
+		skok7:
+			 cmp dx, 171 ;ź
+			 jne skok8;
+			 mov dx, 0179H;
+			 jmp dalej;
+		skok8:
+			 cmp dx, 190 ;ż
+			 jne skok9;
+			 mov dx, 017BH;
+			 jmp dalej;
+		skok9:
+			 cmp dx, 'a'
+			 jb dalej ; skok, gdy znak nie wymaga zamiany
+			 cmp dx, 'z'
+			 ja dalej ; skok, gdy znak nie wymaga zamiany
+			 sub dx, 20H ; zamiana na wielkie litery
+; odesłanie znaku do pamięci
+			 dalej: mov wyswietlenie[ebx * 2], dx ;byl magazyn ebx-licznik *2 bo jest dw
+			 inc ebx ; inkrementacja indeksu
+			 dec ecx
+			 jnz petla ; sterowanie pętlą
+; wyświetlenie przekształconego tekstu
+			 push 0
+			 push OFFSET tytul 
+			 push OFFSET wyswietlenie
+			 push 0
+			 call _MessageBoxW@16 ; wyświetlenie przekształconego tekstu
+			 push 0
+			 call _ExitProcess@4 ; zakończenie programu
+_main ENDP
+END
